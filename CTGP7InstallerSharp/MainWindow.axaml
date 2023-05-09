@@ -1,0 +1,62 @@
+﻿<Application
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="CTGP7InstallerSharp.MainWindow"
+	Width="640"
+	Height="384"
+	MinHeight="326"
+	MinWidth="620"
+	Icon="Assets/window_icon.png"
+	>
+
+
+
+	<Grid RowDefinitions="1.4*, *, 1.4*, *">
+		
+		<Image Source="Assets/logo.png" Width="384" Height="96" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+		<StackPanel Orientation="Vertical" Grid.Row="1" Spacing="5">
+
+			<StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+
+				<Label Content="Select target:" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+				<TextBox x:Name="sdRootText" Width="372" Height="30" Text="" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
+				<Button x:Name="sdBrowseButton" Width="100" Content="Browse" HorizontalAlignment="Right" HorizontalContentAlignment="Center"/>
+
+			</StackPanel>
+
+			<Label FontWeight="Bold" x:Name="miscInfoLabel" Width="350" Content="Miscellaneous Info" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
+
+		</StackPanel>
+
+
+		<StackPanel Orientation="Vertical" Spacing="10" Grid.Row="2">
+			
+			<StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Top">
+
+				<Button FontWeight="Bold" x:Name="startStopButton" Width="250" Height="45" Content="Start/Stop" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+				<Button FontWeight="Bold" x:Name="updateButton" Width="250" Height="45" Content="Update" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+			
+			</StackPanel>
+			
+			<Button x:Name="helpButton" Width="100" Height="30" Content="Help" HorizontalAlignment="Center" VerticalAlignment="Bottom" HorizontalContentAlignment="Center"/>
+			
+		</StackPanel>
+
+		<Grid Grid.Row="3">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="0.4*" />
+				<RowDefinition Height="0.6*" />
+			</Grid.RowDefinitions>
+
+			<Label x:Name="progressInfoLabel" Width="600" Content="" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalAlignment="Center"/>
+			<ProgressBar x:Name="progressBar" Width="600" Height="30" Value="0" HorizontalAlignment="Center" VerticalAlignment="Top" Grid.Row="1"/>
+
+		</Grid>
+
+
+	</Grid>
+
+
+
+</Application>
