@@ -1,9 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
+		<PublishSingleFile>true</PublishSingleFile>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net6.0</TargetFramework>
 		<Nullable>enable</Nullable>
+		<Configurations>Debug;Release;Dev Debug;Dev Release</Configurations>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+	  <DefineConstants>STABLE</DefineConstants>
+	  <DebugType>embedded</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dev Debug|AnyCPU'">
+	  <DefineConstants>DEBUG;DEV</DefineConstants>
+	  <DebugType>embedded</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+	  <DefineConstants>STABLE</DefineConstants>
+	  <DebugType>embedded</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dev Release|AnyCPU'">
+	  <DefineConstants>RELEASE;DEV</DefineConstants>
+	  <Optimize>True</Optimize>
+	  <DebugType>embedded</DebugType>
 	</PropertyGroup>
 
 	<ItemGroup>

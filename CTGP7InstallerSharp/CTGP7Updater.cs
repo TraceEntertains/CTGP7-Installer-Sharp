@@ -8,6 +8,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Timers;
+using System.Diagnostics;
+using Avalonia.Controls.Shapes;
+using Path = System.IO.Path;
+using System.Xml.Linq;
 
 namespace CTGP7InstallerSharp
 {
@@ -392,11 +397,12 @@ namespace CTGP7InstallerSharp
                 if (File.Exists(pendUpdName))
                 {
                     int entriesLeft = 0;
+
                     using (BinaryReader puf = new BinaryReader(File.OpenRead(pendUpdName)))
                     {
                         entriesLeft = puf.ReadInt32();
                         LatestVersion = Encoding.UTF8.GetString(ReadUntilNulByte(puf));
-                        for (int i = 0; i < entriesLeft; i++)
+                        foreach (int entry in Enumerable.Range(0, entriesLeft))
                         {
                             char fileMethod = (char)puf.ReadByte();
                             puf.ReadInt32();
@@ -404,17 +410,18 @@ namespace CTGP7InstallerSharp
                             fileModeList.Add((fileMethod, fileName));
                         }
                     }
+
                     FileList = ParseAndSortDlList(fileModeList);
                 }
                 else
                 {
-                    bool emptyDataRemover = true;
 
-
-                    string fileListURL = DownloadString(BaseURL + _UPDATER_FILE_URL).Replace("\n", "").Replace("\r", "");
+                    string fileListURL = DownloadString(BaseURL + _UPDATER_FILE_URL).Replace("\n", "").Replace("\r", "").Replace("%s", "{0}");
                     List<string> changelogData = DownloadString(BaseURL + _UPDATER_CHGLOG_FILE).Split(";").ToList();
                     for (int index = 0; index < changelogData.Count; index++)
                         changelogData[index] = changelogData[index].Split(":")[0];
+                    
+                    bool emptyDataRemover = true;
 
                     while (emptyDataRemover)
                     {
@@ -446,25 +453,32 @@ namespace CTGP7InstallerSharp
 
                     try
                     {
-                        int chglogIdx = changelogData.IndexOf(LocalVersion);
+                        // count is 63, indexof on 1.4.15 would be 62, indexof on 1.4.13 would be 60, adding 1 would be 63 and 61 respectively
+                        int chglogIdx = changelogData.IndexOf(LocalVersion) + 1;
+
                         if (chglogIdx == -1)
                         {
                             MakeReinstallFlag();
-                            throw new Exception("Current version not known. The version file might be corrupted or has been modified or an update has been revoked.");
+                            throw new Exception("Current version not known. The version file might be corrupted, been modified, or an update has been revoked.");
                         }
-                        if (chglogIdx == changelogData.Count)
+                        else if (chglogIdx == changelogData.Count)
                         {
                             throw new Exception("There are no updates available. If this is not correct, please try again later.");
                         }
 
-                        int progTotal = changelogData.Count - chglogIdx - 1;
-                        for (int index = chglogIdx; index < changelogData.Count; index++)
+                        // progTotal = 63 (Count) - 61 (chglogIdx)  (2)
+                        int progTotal = changelogData.Count - chglogIdx;
+
+                        // index start = starts 62 inclusive (chglogIdx + 1), count is 63 (count) - chglogIdx (61)   (2)
+                        // index would be 62 and 63
+                        foreach (int index in Enumerable.Range(chglogIdx + 1, changelogData.Count - chglogIdx))
                         {
                             try
                             {
-                                Log($"Preparing update (v{changelogData[index]})...");
+                                Log($"Preparing update (v{changelogData[index - 1]})...");
+                                // index (62 or 63) - chglogIdx (61)  (1/2)
                                 Prog(index - chglogIdx, progTotal);
-                                string fileListString = DownloadString(string.Format(fileListURL, changelogData[index]));
+                                string fileListString = DownloadString(string.Format(fileListURL, changelogData[index - 1]));
                                 string[] fileList = fileListString.Split("\n");
                                 foreach (string file in fileList)
                                 {
@@ -472,15 +486,15 @@ namespace CTGP7InstallerSharp
                                     {
                                         continue;
                                     }
-                                    fileModeList.Add((file[0], file.Substring(1).Trim()));
+                                    fileModeList.Add((file[0], file[1..].Trim()));
                                 }
-                                FileList = ParseAndSortDlList(fileModeList);
                             }
                             catch (Exception e)
                             {
                                 throw new Exception($"Failed to get list of files: {e.Message}");
                             }
                         }
+                        FileList = ParseAndSortDlList(fileModeList);
                     }
                     catch (Exception e)
                     {
@@ -496,7 +510,7 @@ namespace CTGP7InstallerSharp
             long neededSpace = CheckNeededExtraSpace(availableSpace);
             if (neededSpace > 0)
             {
-                throw new Exception($"Not enough free space on destination folder. Additional {neededSpace / 1000000} MB needed to proceed with installation.");
+                throw new Exception($"Not enough free space on destination folder. Additional {neededSpace / 1048576:F1} MB needed to proceed with installation.");
             }
         }
 
@@ -608,7 +622,7 @@ namespace CTGP7InstallerSharp
                     }
                     if (e.InnerException is OperationCanceledException)
                         throw new Exception("User cancelled installation");
-                    else throw new Exception(e.Message);
+                    else throw new Exception(e.InnerException.StackTrace);
                 }
                 finally
                 {
@@ -790,23 +804,56 @@ namespace CTGP7InstallerSharp
             try
             {
                 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-                
+
+                CTGP7Updater.fileProgressCallback?.Invoke(Path.GetFileName(fileOnlyName), 0);
+
                 CTGP7Updater.MkFoldersForFile(filePath);
+
+
+
+                char[] separators = { '\\', '/' };
+                string trimmedPath = remoteName.Replace("/", "\\").TrimStart(separators);
+
+#if DEBUG
+                CustomTimer timer = new(trimmedPath);
+                timer.Start("request+cs1+cs2+write");
+                timer.Start("request+cs1+cs2");
+                timer.Start("webrequest");
+#endif
                 using (HttpResponseMessage response = await CTGP7Updater.client.GetAsync(URL, HttpCompletionOption.ResponseHeadersRead))
                 {
                     response.EnsureSuccessStatusCode();
+#if DEBUG
+                    timer.Stop("webrequest");
+#endif
 
                     // Get the total file size
                     long totalBytes = response.Content.Headers.ContentLength ?? -1;
 
+#if DEBUG
+                    timer.Start("createstream1");
+#endif
                     using (Stream contentStream = await response.Content.ReadAsStreamAsync())
                     {
+#if DEBUG
+                        timer.Stop("createstream1");
+                        timer.Start("createstream2");
+#endif
                         using (FileStream fileStream = new FileStream(filePath + _DOWN_PART_EXT, FileMode.Create, FileAccess.Write))
                         {
-                            byte[] buffer = new byte[4096];
+#if DEBUG
+                            timer.Stop("createstream2");
+                            timer.Stop("request+cs1+cs2");
+#endif
+                            byte[] buffer = new byte[16384];
                             long downloadedBytes = 0;
                             int bytesRead;
 
+#if DEBUG
+                            timer.Start("write");
+#endif
+
+                            int writeCount = 0;
                             while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                             {
                                 if (CTGP7Updater.isStoppedCallback.Invoke()) throw new OperationCanceledException(); 
@@ -818,22 +865,31 @@ namespace CTGP7InstallerSharp
                                 // Calculate the progress percentage
                                 double progressPercentage = (double)downloadedBytes / totalBytes * 100;
 
-                                // Invoke the progress callback with the percentage
-                                CTGP7Updater.fileProgressCallback?.Invoke(Path.GetFileName(filePath), progressPercentage);
+                                writeCount++;
+
+                                // Invoke the progress callback with the percentage every "writeCount % Math.Round(8d / (buffer.Length / 8192)) == 0" writes (lol)
+                                if (writeCount % Math.Round(8d / (buffer.Length / 8192)) == 0) CTGP7Updater.fileProgressCallback?.Invoke(Path.GetFileName(fileOnlyName), progressPercentage);
                             }
+#if DEBUG
+                            timer.Stop("write");
+                            timer.Stop("request+cs1+cs2+write");
+#endif
                         }
                     }
-
+                    CTGP7Updater.fileProgressCallback?.Invoke(Path.GetFileName(fileOnlyName), 100);
 
                     CTGP7Updater.FileMove(filePath + _DOWN_PART_EXT, filePath);
                 }
+#if DEBUG
+                timer.Close();
+#endif
             }
             catch (Exception e)
             {
                 if (e is IOException || e is WebException || e is TimeoutException)
                 {
                     CTGP7Updater.FileDelete(filePath + _DOWN_PART_EXT);
-                    throw new Exception($"Failed to download file \"{fileOnlyName}\": {e.Message}");
+                    throw new Exception($"Failed to download file \"{fileOnlyName}\": {e.StackTrace}");
                 }
                 else
                 {
@@ -878,6 +934,54 @@ namespace CTGP7InstallerSharp
             {
                 throw new Exception($"Unknown file mode: {FileMethod}");
             }
+        }
+    }
+
+    public class CustomTimer
+    {
+        FileStream file;
+        StreamWriter writer;
+        Dictionary<string, Stopwatch> timers = new();
+
+        string Name;
+
+        public CustomTimer(string name)
+        {
+            Name = name;
+
+            string newPath = $"{Path.Combine("TimeLogs", Name)}.txt";
+
+            CTGP7Updater.MkFoldersForFile(newPath);
+            file = File.OpenWrite(newPath);
+            writer = new(file);
+        }
+
+        public void Add(string name)
+        {
+            timers.Add(name, new());
+            
+        }
+
+        public void Start(string name)
+        {
+            if (!timers.ContainsKey(name))
+                Add(name);
+            timers[name].Start();
+        }
+
+        public void Stop(string name)
+        {
+            timers[name].Stop();
+            writer.WriteLine($"{name} = {timers[name].ElapsedMilliseconds}ms");
+        }
+
+        public void Close()
+        {
+            writer.Flush();
+            writer.Close(); // Close the StreamWriter
+            file.Close(); // Close the FileStream
+            writer.Dispose();
+            file.Dispose(); 
         }
     }
 }
