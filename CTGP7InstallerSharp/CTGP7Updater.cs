@@ -622,7 +622,7 @@ namespace CTGP7InstallerSharp
                     }
                     if (e.InnerException is OperationCanceledException)
                         throw new Exception("User cancelled installation");
-                    else throw new Exception(e.InnerException.StackTrace);
+                    else throw new Exception(e.Message);
                 }
                 finally
                 {
@@ -889,7 +889,7 @@ namespace CTGP7InstallerSharp
                 if (e is IOException || e is WebException || e is TimeoutException)
                 {
                     CTGP7Updater.FileDelete(filePath + _DOWN_PART_EXT);
-                    throw new Exception($"Failed to download file \"{fileOnlyName}\": {e.StackTrace}");
+                    throw new Exception($"Failed to download file \"{fileOnlyName}\": {e.Message}");
                 }
                 else
                 {
