@@ -1,10 +1,6 @@
-
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Themes.Fluent;
-using System;
 
 namespace CTGP7InstallerSharp
 {

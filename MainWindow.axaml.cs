@@ -1,4 +1,3 @@
-using CTGP7InstallerSharp;
 using System.IO;
 using System;
 using System.Threading;
@@ -8,12 +7,12 @@ using MessageBox.Avalonia;
 using static MessageBox.Avalonia.Enums.Icon;
 using static MessageBox.Avalonia.Enums.ButtonResult;
 using static MessageBox.Avalonia.Enums.ButtonEnum;
-using System.Drawing;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Color = Avalonia.Media.Color;
 using Brushes = Avalonia.Media.Brushes;
 using Avalonia.Threading;
+using System.Linq;
 
 namespace CTGP7InstallerSharp
 {
@@ -38,11 +37,6 @@ namespace CTGP7InstallerSharp
 
         public MainWindow()
         {
-            InitializeComponent();
-        }
-
-        private void InitializeComponent()
-        {
             AvaloniaXamlLoader.Load(this);
 
             // Find the ProgressBar control by its resource key
@@ -55,23 +49,29 @@ namespace CTGP7InstallerSharp
             sdBrowseButton = this.FindControl<Button>("sdBrowseButton")!;
             helpButton = this.FindControl<Button>("helpButton")!;
 
+            AdditionalInitializeComponent();
+        }
+
+        private void AdditionalInitializeComponent()
+        {
+
             Title = "CTGP-7 Installer Sharp v" + CTGP7Updater.SHARP_VERSION_NUMBER;
-            connectSignalsSlots();
+            AttachSignals();
             progressBar.IsEnabled = false;
             progressInfoLabel.Content = "";
             isInstaller = true;
             isCitraPath = null;
             hasPending = false;
             didSaveBackup = false;
-            setStartButtonState(0);
+            SetStartButtonState(0);
             worker = null;
 
-            checkOwnVersion();
-            scanForNintendo3DSSD();
+            CheckVersion();
+            ScanForSD();
         }
 
 
-        private void checkOwnVersion()
+        private void CheckVersion()
         {
             try
             {
@@ -108,13 +108,13 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        public string GetVersionInfo()
+        public static string GetVersionInfo()
         {
             return $"Installer version: {CTGP7Updater.SHARP_VERSION_NUMBER}" +
                    $"\nPython installer version equivalent: {CTGP7Updater.MAIN_VERSION_NUMBER}";
         }
 
-        public void reportProgress((char, object) data)
+        public void ReportProgress((char, object) data)
         {
             //if (data.Item1 == 'p') MessageBox.Show(data.Item1.ToString(), "progression");
             if (data.Item1 == 'm')
@@ -146,7 +146,7 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        public void reSetup()
+        public void ResetMenu()
         {
             progressBar.SafeInvoke(() => progressBar.Value = 0);
             progressBar.SafeInvoke(() => progressBar.IsEnabled = false);
@@ -154,10 +154,10 @@ namespace CTGP7InstallerSharp
             helpButton.SafeInvoke(() => helpButton.IsEnabled = true);
             sdRootText.SafeInvoke(() => sdRootText.IsEnabled = true);
             progressInfoLabel.SafeInvoke(() => progressInfoLabel.Content = "");
-            applySDFolder(sdRootText.Text);
+            UpdateSDFolder(sdRootText.Text);
         }
 
-        private void installOnError(string err)
+        private void OnInstallError(string err)
         {
             /*if (TaskbarManager.IsPlatformSupported)
             {
@@ -176,10 +176,10 @@ namespace CTGP7InstallerSharp
                 icon: Error
                 ).Show(this));
 
-            reSetup(); // close()
+            ResetMenu(); // close()
         }
 
-        private async void installOnSuccess(string ver)
+        private async void OnInstallSuccess(string ver)
         {
              /*if (TaskbarManager.IsPlatformSupported)
             {
@@ -210,13 +210,13 @@ namespace CTGP7InstallerSharp
                     }
                     catch (Exception e)
                     {
-                        installOnError($"Failed to restore save backup, please restore it manually: {e}");
+                        OnInstallError($"Failed to restore save backup, please restore it manually: {e}");
                         return;
                     }
                 }
             }
 
-            reSetup(); // close()
+            ResetMenu(); // close()
         }
 
         // Helper method to recursively copy a directory
@@ -236,7 +236,7 @@ namespace CTGP7InstallerSharp
                 CopyDirectory(dir, dest);
             }
         }
-        private bool doSaveBackup()
+        private bool DoSaveBackup()
         {
             try
             {
@@ -245,7 +245,7 @@ namespace CTGP7InstallerSharp
 
                 if (Directory.Exists(savefolder))
                 {
-                    reportProgress(('m', "Doing save backup..."));
+                    ReportProgress(('m', "Doing save backup..."));
 
                     if (Directory.Exists(backupfolder))
                     {
@@ -266,12 +266,12 @@ namespace CTGP7InstallerSharp
             }
             catch (Exception e)
             {
-                installOnError($"Failed to create save backup: {e}");
+                OnInstallError($"Failed to create save backup: {e}");
                 return false;
             }
         }
 
-        private void scanForNintendo3DSSD()
+        private void ScanForSD()
         {
             var folder = CTGP7Updater.FindNintendo3DSRoot();
 
@@ -295,7 +295,7 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        private async void updateButtonPress()
+        private async void OnUpdateButtonPress()
         {
             if (hasPending && await
                 MessageBoxManager
@@ -312,11 +312,11 @@ namespace CTGP7InstallerSharp
             miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "");
 
             worker = new CTGP7InstallerWorker(sdRootText.Text, isInstaller, (bool)isCitraPath!);
-            worker.signals.Progress += reportProgress;
-            worker.signals.Success += installOnSuccess;
-            worker.signals.Error += installOnError;
+            worker.signals.Progress += ReportProgress;
+            worker.signals.Success += OnInstallSuccess;
+            worker.signals.Error += OnInstallError;
 
-            setStartButtonState(4);
+            SetStartButtonState(4);
             sdBrowseButton.IsEnabled = false;
             helpButton.IsEnabled = false;
             sdRootText.IsEnabled = false;
@@ -325,7 +325,7 @@ namespace CTGP7InstallerSharp
             thread.Start();
         }
 
-        private async void startStopButtonPress()
+        private async void MainButtonPress()
         {
             if (startButtonState > 0 && startButtonState < 4)
             {
@@ -355,7 +355,7 @@ namespace CTGP7InstallerSharp
                     return;
                 }
 
-                if (isInstaller && !doSaveBackup())
+                if (isInstaller && !DoSaveBackup())
                 {
                     return;
                 }
@@ -363,10 +363,10 @@ namespace CTGP7InstallerSharp
                 isInstaller = true;
                 miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "");
                 worker = new CTGP7InstallerWorker(sdRootText.Text, isInstaller, (bool)isCitraPath!);
-                worker.signals.Progress += reportProgress;
-                worker.signals.Success += installOnSuccess;
-                worker.signals.Error += installOnError;
-                setStartButtonState(4);
+                worker.signals.Progress += ReportProgress;
+                worker.signals.Success += OnInstallSuccess;
+                worker.signals.Error += OnInstallError;
+                SetStartButtonState(4);
                 sdBrowseButton.IsEnabled = false;
                 helpButton.IsEnabled = false;
                 sdRootText.IsEnabled = false;
@@ -375,15 +375,12 @@ namespace CTGP7InstallerSharp
             }
             else if (startButtonState == 4)
             {
-                if (worker != null)
-                {
-                    worker.signals.RaiseStopEvent();
-                }
-                setStartButtonState(0);
+                worker?.signals.RaiseStopEvent();
+                SetStartButtonState(0);
             }
         }
 
-        private void setStartButtonState(int state)
+        private void SetStartButtonState(int state)
         {
             startButtonState = state;
             startStopButton.SafeInvoke(() => startStopButton.IsEnabled = state != 0);
@@ -423,12 +420,12 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        private void applySDFolder(string folder)
+        private void UpdateSDFolder(string folder)
         {
-            if (string.IsNullOrEmpty(folder) || folder[folder.Length - 1] == ' ')
+            if (string.IsNullOrEmpty(folder) || folder[^1] == ' ')
             {
                 miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "");
-                setStartButtonState(0);
+                SetStartButtonState(0);
                 return;
             }
 
@@ -449,39 +446,41 @@ namespace CTGP7InstallerSharp
                 {
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "Corrupted CTGP-7 installation detected.");
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Foreground = new SolidColorBrush(Color.Parse("#f40")));
-                    setStartButtonState(3);
+                    SetStartButtonState(3);
                 }
                 else if (bmsk.ReinstallFlagPresent)
                 {
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "Broken CTGP-7 installation detected.");
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Foreground = new SolidColorBrush(Color.Parse("#f24")));
-                    setStartButtonState(3);
+                    SetStartButtonState(3);
                 }
                 else if (bmsk.CTGPFolderNotPresent)
                 {
-                    setStartButtonState(1);
+                    SetStartButtonState(1);
                 }
                 else
                 {
                     hasPending = bmsk.PendingUpdateAvailable;
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "Valid CTGP-7 installation detected.");
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Foreground = new SolidColorBrush(Color.Parse("#480")));
-                    setStartButtonState(2);
+                    SetStartButtonState(2);
                 }
             }
             else
             {
                 miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "Folder does not exist");
                 miscInfoLabel.SafeInvoke(() => miscInfoLabel.Foreground = Brushes.Red);
-                setStartButtonState(0);
+                SetStartButtonState(0);
             }
         }
 
-        private async void selectSDDirectory()
+        private async void BrowseForSD()
         {
-            var dialog = new OpenFolderDialog();
-            dialog.Title = "Select 3DS SD Card";
-            dialog.InitialDirectory = sdRootText.Text;
+            OpenFolderDialog dialog = new()
+            {
+                Title = "Select 3DS SD Card",
+                Directory = sdRootText.Text
+            };
 
             var result = await dialog.ShowAsync(this);
             if (!string.IsNullOrEmpty(result))
@@ -490,7 +489,7 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        private void showHelpDialog()
+        private void ShowHelpDialog()
         {
             MessageBoxManager
                     .GetMessageBoxStandardWindow(
@@ -500,13 +499,13 @@ namespace CTGP7InstallerSharp
                 title: "About").Show(this);
         }
 
-        private void connectSignalsSlots()
+        private void AttachSignals()
         {
-            sdBrowseButton.Click += (s, e) => selectSDDirectory();
-            sdRootText.GetObservable(TextBox.TextProperty).Subscribe(applySDFolder);
-            helpButton.Click += (s, e) => showHelpDialog();
-            startStopButton.Click += (s, e) => startStopButtonPress();
-            updateButton.Click += (s, e) => updateButtonPress();
+            sdBrowseButton.Click += (s, e) => BrowseForSD();
+            sdRootText.GetObservable(TextBox.TextProperty).Subscribe(UpdateSDFolder);
+            helpButton.Click += (s, e) => ShowHelpDialog();
+            startStopButton.Click += (s, e) => MainButtonPress();
+            updateButton.Click += (s, e) => OnUpdateButtonPress();
         }
     }
 
@@ -514,10 +513,10 @@ namespace CTGP7InstallerSharp
 
     public class WorkerSignals
     {
-        public event Action<(char, object)> Progress;
-        public event Action<string> Error;
-        public event Action<string> Success;
-        public event Action Stop;
+        public event Action<(char, object)>? Progress;
+        public event Action<string>? Error;
+        public event Action<string>? Success;
+        public event Action? Stop;
 
         public void RaiseProgressEvent((char, object) data)
         {
@@ -543,11 +542,11 @@ namespace CTGP7InstallerSharp
 
     public class CTGP7InstallerWorker
     {
-        string BaseDir;
-        bool IsInstall;
-        bool IsCitra;
+        readonly string BaseDir;
+        readonly bool IsInstall;
+        readonly bool IsCitra;
         public WorkerSignals signals;
-        CTGP7Updater updater;
+        CTGP7Updater? updater;
 
         public CTGP7InstallerWorker(string basedir, bool isInstall, bool isCitra)
         {
@@ -559,25 +558,17 @@ namespace CTGP7InstallerSharp
             updater = null;
         }
 
-        void LogData((char, object) data)
-        {
-            signals.RaiseProgressEvent(data);
-        }
+        void LogData((char, object) data) => signals.RaiseProgressEvent(data);
 
-        void OnStop()
-        {
-            if (updater != null)
-                updater.Stop();
-        }
+        void OnStop() => updater?.Stop();
 
         public void Run()
         {
             try
             {
                 LogData(('m', "Starting CTGP-7 Installation..."));
-                updater = new CTGP7Updater(IsInstall, IsCitra);
+                updater = new CTGP7Updater(LogData, IsInstall, IsCitra);
                 updater.FetchDefaultCDNURL();
-                updater.SetLogFunction(LogData);
                 updater.SetBaseDirectory(BaseDir);
                 updater.CleanInstallFolder();
                 updater.GetLatestVersion();
@@ -603,14 +594,19 @@ namespace CTGP7InstallerSharp
 
     public static class Extensions
     {
-        public static async void SafeInvoke(this AvaloniaObject form, Action method)
-        {
-            await Dispatcher.UIThread.InvokeAsync(method);
-        }
+        public static async void SafeInvoke(this AvaloniaObject _, Action method) => await Dispatcher.UIThread.InvokeAsync(method);
 
-        public static async void SafeInvoke(Action method)
+        public static async void SafeInvoke(Action method) => await Dispatcher.UIThread.InvokeAsync(method);
+
+        public static byte[] AddNullByte(this byte[] byteArray, int count = 1)
         {
-            await Dispatcher.UIThread.InvokeAsync(method);
+            Array.Resize(ref byteArray, byteArray.Length + count);
+            for (int i = count - 1; i > 0;)
+            {
+                byteArray[byteArray.Length - 1 - i] = 0x00;
+                i--;
+            }
+            return byteArray;
         }
     }
 }

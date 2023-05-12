@@ -8,26 +8,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
-using System.Timers;
 using System.Diagnostics;
-using Avalonia.Controls.Shapes;
 using Path = System.IO.Path;
-using System.Xml.Linq;
 
 namespace CTGP7InstallerSharp
 {
-    /*    import os
-    import urllib3
-    import shutil
-    import psutil
-    import struct
-        from typing import List
-
-    urlmgr = urllib3.PoolManager(headers ={"connection":"keep-alive"})
-    def urlopen(url, ** kwarg):
-        out = urlmgr.request("GET", url, chunked = True, preload_content = False, **kwarg)
-        if out.status != 200: raise Exception("Received staus code {}".format(out.status))
-        return out*/
 
     class CTGP7Updater
     {
@@ -49,10 +34,10 @@ namespace CTGP7InstallerSharp
         public static string _REINSTALLFLAG_PATH = Path.Combine("config", "forceInstall.flag");
         public static int _SLACK_FREE_SPACE = 20000000;
 
-        public static HttpClient client = new HttpClient();
+        public static HttpClient client = new();
 
-        public static Func<bool> isStoppedCallback;
-        public static Action<string, double> fileProgressCallback;
+        public static Func<bool>? IsStoppedCallback;
+        public static Action<string, double>? FileProgressCallback;
 
         public bool IsInstaller { get; set; }
         public string BasePath { get; set; }
@@ -62,14 +47,14 @@ namespace CTGP7InstallerSharp
         public long FileDownSize { get; set; }
         public List<FileListEntry> FileList { get; set; }
         public string LatestVersion { get; set; }
-        public Action<(char, object)> LogFunction { get; set; }
+        public Action<(char, object)>? LogFunction { get; set; }
         public bool IsStopped { get; set; }
         public long DownloadSize { get; set; }
         public int CurrentUpdateIndex { get; set; }
         public bool IsCitra { get; set; }
-        public string BaseURL { get; set; }
+        public string? BaseURL { get; set; }
 
-        public CTGP7Updater(bool isInstaller = true, bool isCitra = false)
+        public CTGP7Updater(Action<(char, object)> logFunction, bool isInstaller = true, bool isCitra = false)
         {
             IsInstaller = isInstaller;
             BasePath = string.Empty;
@@ -79,14 +64,15 @@ namespace CTGP7InstallerSharp
             FileDownSize = 0;
             FileList = new List<FileListEntry>();
             LatestVersion = string.Empty;
-            LogFunction = null;
+            SetLogFunction(logFunction);
             IsStopped = false;
             DownloadSize = 0;
             CurrentUpdateIndex = 0;
             IsCitra = isCitra;
+            client.DefaultRequestHeaders.Connection.Add("keep-alive");
 
-            isStoppedCallback = IsStoppedCallback;
-            fileProgressCallback = LogFileProgressCallback;
+            IsStoppedCallback = IsStoppedCallbackFunc;
+            FileProgressCallback = LogFileProgressCallbackFunc;
         }
 
 
@@ -106,7 +92,7 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        public static void FileDelete(string file)
+        public static void DeleteFile(string file)
         {
             try
             {
@@ -116,9 +102,9 @@ namespace CTGP7InstallerSharp
             catch { }
         }
 
-        public static void FileMove(string oldf, string newf)
+        public static void MoveFile(string oldf, string newf)
         {
-            FileDelete(newf);
+            DeleteFile(newf);
             File.Move(oldf, newf);
         }
 
@@ -127,12 +113,11 @@ namespace CTGP7InstallerSharp
             return DownloadString(_BASE_URL_DYN_LINK).Trim();
         }
 
-
         public void FetchDefaultCDNURL()
         {
             try
             {
-                BaseURL = DownloadString(_BASE_URL_DYN_LINK).Trim();
+                BaseURL = GetDefaultCdnUrlAsString();
             }
             catch (Exception e)
             {
@@ -140,15 +125,15 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        public static void MkFoldersForFile(string fol)
+        public static void CreateDirectoriesRecursively(string fol)
         {
-            string g = fol.Substring(0, fol.LastIndexOf(Path.DirectorySeparatorChar));
+            string g = fol[..fol.LastIndexOf(Path.DirectorySeparatorChar)];
             Directory.CreateDirectory(g);
         }
 
         private string BuildFilePath(string path)
         {
-            return Path.Combine(Path.Combine(BasePath, "CTGP-7"), path.Replace("/", Path.DirectorySeparatorChar.ToString()).Substring(1));
+            return Path.Combine(Path.Combine(BasePath, "CTGP-7"), path.Replace("/", Path.DirectorySeparatorChar.ToString())[1..]);
         }
 
         private string BuildFileURL(string path, bool isCitra)
@@ -158,9 +143,9 @@ namespace CTGP7InstallerSharp
 
         private List<FileListEntry> ParseAndSortDlList(List<(char, string)> downloadList)
         {
-            List<string> allFilePaths = new List<string>();
-            List<char> allFileModes = new List<char>();
-            List<FileListEntry> ret = new List<FileListEntry>();
+            List<string> allFilePaths = new();
+            List<char> allFileModes = new();
+            List<FileListEntry> ret = new();
 
             for (int i = 0; i < downloadList.Count; i++)
             {
@@ -171,7 +156,7 @@ namespace CTGP7InstallerSharp
                 {
                     try
                     {
-                        DownloadSize = int.Parse(path.Substring(1));
+                        DownloadSize = int.Parse(path[1..]);
                     }
                     catch (Exception e)
                     {
@@ -225,7 +210,7 @@ namespace CTGP7InstallerSharp
         {
             try
             {
-                using (HttpClient client = new HttpClient())
+                using (HttpClient client = new())
                 {
                     byte[] data = client.GetByteArrayAsync(url).Result;
                     return Encoding.UTF8.GetString(data);
@@ -242,19 +227,14 @@ namespace CTGP7InstallerSharp
             IsStopped = true;
         }
 
-        public bool IsStoppedCallback()
+        public bool IsStoppedCallbackFunc()
         {
             return IsStopped;
         }
 
-        public void LogFileProgressCallback(string fileOnlyName, double progress)
+        public void LogFileProgressCallbackFunc(string fileOnlyName, double progress)
         {
             Log($"Downloading file {CurrDownloadCount} of {DownloadCount}: \"{fileOnlyName}\" ({progress:F1}%)");
-        }
-
-        public void SetBaseURL(string url)
-        {
-            BaseURL = url;
         }
 
         public void SetLogFunction(Action<(char, object)> func)
@@ -340,9 +320,9 @@ namespace CTGP7InstallerSharp
         {
             try
             {
-                string p = Path.Combine(BasePath, "CTGP-7", _REINSTALLFLAG_PATH);
-                MkFoldersForFile(p);
-                File.Create(p).Close();
+                string reinstFlag = Path.Combine(BasePath, "CTGP-7", _REINSTALLFLAG_PATH);
+                CreateDirectoriesRecursively(reinstFlag);
+                File.Create(reinstFlag).Close();
             }
             catch
             {
@@ -352,23 +332,27 @@ namespace CTGP7InstallerSharp
 
         private static byte[] ReadUntilNulByte(BinaryReader reader)
         {
-            List<byte> bytes = new List<byte>();
+            if (reader == null)
+                return Array.Empty<byte>();
+
+            List<byte> bytes = new();
+
             while (true)
             {
                 byte data = reader.ReadByte();
-                if (data == 0x00)
-                {
+                if (data == 0)
                     break;
-                }
+
                 bytes.Add(data);
             }
+
             return bytes.ToArray();
         }
 
         public void LoadUpdateInfo()
         {
             string LocalVersion;
-            List<(char, string)> fileModeList = new List<(char, string)>();
+            List<(char, string)> fileModeList = new();
 
             if (IsInstaller)
             {
@@ -380,7 +364,7 @@ namespace CTGP7InstallerSharp
                     {
                         if (string.IsNullOrEmpty(file))
                             continue;
-                        fileModeList.Add((file[0], file.Substring(1).Trim()));
+                        fileModeList.Add((file[0], file[1..].Trim()));
                     }
                     FileList = ParseAndSortDlList(fileModeList);
                 }
@@ -394,15 +378,19 @@ namespace CTGP7InstallerSharp
                 Log("Preparing update...");
                 string pendUpdName = Path.Combine(BasePath, "CTGP-7", _PENDINGUPDATE_PATH);
 
+                // TODO: Ensure functionality
                 if (File.Exists(pendUpdName))
                 {
-                    int entriesLeft = 0;
+                    int entriesLeft;
 
-                    using (BinaryReader puf = new BinaryReader(File.OpenRead(pendUpdName)))
+                    using (BinaryReader puf = new(File.OpenRead(pendUpdName)))
                     {
-                        entriesLeft = puf.ReadInt32();
+                        if (!BitConverter.IsLittleEndian)
+                            entriesLeft = BitConverter.ToInt32(puf.ReadBytes(4).Reverse().ToArray());
+                        else
+                            entriesLeft = puf.ReadInt32();
                         LatestVersion = Encoding.UTF8.GetString(ReadUntilNulByte(puf));
-                        foreach (int entry in Enumerable.Range(0, entriesLeft))
+                        foreach (int _ in Enumerable.Range(0, entriesLeft))
                         {
                             char fileMethod = (char)puf.ReadByte();
                             puf.ReadInt32();
@@ -439,7 +427,7 @@ namespace CTGP7InstallerSharp
                     try
                     {
                         string configPath = Path.Combine(BasePath, "CTGP-7", _VERSION_FILE_PATH);
-                        using (StreamReader vf = new StreamReader(configPath))
+                        using (StreamReader vf = new(configPath))
                         {
                             LocalVersion = vf.ReadToEnd().Trim();
                         }
@@ -514,7 +502,7 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        public static string FindNintendo3DSRoot()
+        public static string? FindNintendo3DSRoot()
         {
             try
             {
@@ -555,10 +543,11 @@ namespace CTGP7InstallerSharp
 
         public void MakePendingUpdate()
         {
-            byte[] header = Encoding.ASCII.GetBytes(LatestVersion);
-            byte[] flist = new byte[] { };
+            // TODO: Ensure functionality of making update
+            byte[] header = Encoding.ASCII.GetBytes(LatestVersion).AddNullByte();
+            byte[] flist = Array.Empty<byte>();
             int pendingCount = 0;
-            foreach (var entry in FileList)
+            foreach (FileListEntry entry in FileList)
             {
                 if (!entry.HavePerformed)
                 {
@@ -566,12 +555,15 @@ namespace CTGP7InstallerSharp
                     pendingCount++;
                 }
             }
-            header = BitConverter.GetBytes(pendingCount).Reverse().ToArray().Concat(header).ToArray();
+            if (!BitConverter.IsLittleEndian)
+                header = BitConverter.GetBytes(pendingCount).Reverse().ToArray().Concat(header).ToArray();
+            else
+                header = BitConverter.GetBytes(pendingCount).ToArray().Concat(header).ToArray();
 
             string fileName = Path.Combine(BasePath, "CTGP-7", string.Join(Path.DirectorySeparatorChar.ToString(), _PENDINGUPDATE_PATH));
-            MkFoldersForFile(fileName);
-            FileDelete(fileName);
-            using (var puf = new BinaryWriter(File.Open(fileName, FileMode.CreateNew)))
+            CreateDirectoriesRecursively(fileName);
+            DeleteFile(fileName);
+            using (BinaryWriter puf = new(File.Open(fileName, FileMode.CreateNew)))
             {
                 puf.Write(header);
                 puf.Write(flist);
@@ -596,10 +588,10 @@ namespace CTGP7InstallerSharp
             if (IsCitra)
             {
                 string configPath = Path.Combine(BasePath, "CTGP-7", string.Join(Path.DirectorySeparatorChar.ToString(), _ISCITRAFLAG_PATH));
-                MkFoldersForFile(configPath);
+                CreateDirectoriesRecursively(configPath);
                 File.WriteAllBytes(configPath, Encoding.ASCII.GetBytes("It's really a lemon, no?"));
             }
-            string prevReturnValue = null;
+            string? prevReturnValue = null;
             foreach (var entry in FileList)
             {
                 if (entry.FileMethod == 'M' || entry.FileMethod == 'C')
@@ -610,7 +602,7 @@ namespace CTGP7InstallerSharp
 
                 try
                 {
-                    prevReturnValue = entry.Perform(prevReturnValue);
+                    prevReturnValue = entry.Perform(prevReturnValue!);
                 }
                 catch (Exception e)
                 {
@@ -643,7 +635,7 @@ namespace CTGP7InstallerSharp
             try
             {
                 string configPath = Path.Combine(mainfolder, string.Join(Path.DirectorySeparatorChar.ToString(), _VERSION_FILE_PATH));
-                MkFoldersForFile(configPath);
+                CreateDirectoriesRecursively(configPath);
                 File.WriteAllBytes(configPath, Encoding.ASCII.GetBytes(LatestVersion));
             }
             catch (Exception e)
@@ -654,15 +646,15 @@ namespace CTGP7InstallerSharp
 
             try
             {
-                FileDelete(Path.Combine(BasePath, "CTGP-7", string.Join(Path.DirectorySeparatorChar.ToString(), _PENDINGUPDATE_PATH)));
+                DeleteFile(Path.Combine(BasePath, "CTGP-7", string.Join(Path.DirectorySeparatorChar.ToString(), _PENDINGUPDATE_PATH)));
                 if (File.Exists(tooInstallHbrwFile))
                 {
-                    FileMove(tooInstallHbrwFile, hbrwFile);
-                    File.Copy(hbrwFile, hbrwFileFinal);
+                    MoveFile(tooInstallHbrwFile, hbrwFile);
+                    File.Copy(hbrwFile, hbrwFileFinal, true);
                 }
                 if (File.Exists(tooInstallCiaFile))
                 {
-                    FileMove(tooInstallCiaFile, ciaFile);
+                    MoveFile(tooInstallCiaFile, ciaFile);
                 }
             }
             catch (Exception e)
@@ -694,12 +686,13 @@ namespace CTGP7InstallerSharp
             string citraPath;
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
-                citraPath = Path.Combine(Environment.GetEnvironmentVariable("APPDATA"), "Citra", "sdmc");
+                citraPath = Path.Combine(Environment.GetEnvironmentVariable("APPDATA")!, "Citra", "sdmc");
             }
             else
             {
-                citraPath = Path.Combine(Environment.GetEnvironmentVariable("HOME"), ".local", "share", "citra-emu", "sdmc");
+                citraPath = Path.Combine(Environment.GetEnvironmentVariable("HOME")!, ".local", "share", "citra-emu", "sdmc");
             }
+            // TODO: android check
 
             try
             {
@@ -730,24 +723,24 @@ namespace CTGP7InstallerSharp
 
     public class FileListEntry
     {
-        private string filePath;
-        private int forVersion; // Unused
+        readonly private string FilePath;
+        readonly private int ForVersion; // Unused
         public char FileMethod;
         public bool HavePerformed;
-        private string URL;
-        private string fileOnlyName;
-        private string remoteName;
+        readonly private string URL;
+        readonly private string FileOnlyName;
+        readonly private string RemoteName;
 
         public FileListEntry(int ver, char method, string path, string url)
         {
-            filePath = path;
-            forVersion = ver; // Unused
+            FilePath = path;
+            ForVersion = ver; // Unused
             FileMethod = method;
             HavePerformed = false;
 
             URL = url;
-            fileOnlyName = filePath.Substring(filePath.LastIndexOf(Path.DirectorySeparatorChar) + 1);
-            remoteName = filePath.Substring(filePath.LastIndexOf(Path.DirectorySeparatorChar + "CTGP-7" + Path.DirectorySeparatorChar) + 7)
+            FileOnlyName = FilePath[(FilePath.LastIndexOf(Path.DirectorySeparatorChar) + 1)..];
+            RemoteName = FilePath[(FilePath.LastIndexOf(Path.DirectorySeparatorChar + "CTGP-7" + Path.DirectorySeparatorChar) + 7)..]
                 .Replace("\\", "/");
         }
 
@@ -755,43 +748,37 @@ namespace CTGP7InstallerSharp
         {
             if (obj is FileListEntry other)
             {
-                return filePath == other.filePath &&
+                return FilePath == other.FilePath &&
                        URL == other.URL &&
                        FileMethod == other.FileMethod &&
-                       forVersion == other.forVersion;
+                       ForVersion == other.ForVersion;
             }
 
             return false;
         }
-
+        public override int GetHashCode()
+        {
+            return $"{FileMethod}/{FilePath}".GetHashCode();
+        }
 
         public override string ToString()
         {
             return string.Format("ver: \"{0}\" method: \"{1}\" path: \"{2}\" url: \"{3}\"",
-                forVersion, FileMethod, filePath, URL);
+                ForVersion, FileMethod, FilePath, URL);
         }
 
         // Export struct for pendingUpdate.bin
         public byte[] ExportToPend()
         {
-            byte[] methodBytes = BitConverter.GetBytes((byte)FileMethod);
-            byte[] versionBytes = BitConverter.GetBytes(forVersion);
-            byte[] remoteNameBytes = Encoding.UTF8.GetBytes(remoteName);
-            byte[] nullTerminator = new byte[] { 0 };
+            byte[] fileMethodByte = BitConverter.GetBytes(FileMethod);
+            byte[] remotePathBytes = Encoding.ASCII.GetBytes(RemoteName);
 
-            byte[] result = new byte[1 + sizeof(int) + remoteNameBytes.Length + nullTerminator.Length];
-
-            int offset = 0;
-            Buffer.BlockCopy(methodBytes, 0, result, offset, methodBytes.Length);
-            offset += methodBytes.Length;
-
-            Buffer.BlockCopy(versionBytes, 0, result, offset, versionBytes.Length);
-            offset += versionBytes.Length;
-
-            Buffer.BlockCopy(remoteNameBytes, 0, result, offset, remoteNameBytes.Length);
-            offset += remoteNameBytes.Length;
-
-            Buffer.BlockCopy(nullTerminator, 0, result, offset, nullTerminator.Length);
+            // Pack the data into a byte array
+            byte[] result = new byte[1 + remotePathBytes.Length];
+            Buffer.BlockCopy(fileMethodByte, 0, result, 0, 1);
+            result = result.AddNullByte(4); // 4-byte padding, initialized to all zeroes (technically forVersion, but always is 0)
+            Buffer.BlockCopy(remotePathBytes, 0, result, 5, remotePathBytes.Length);
+            result = result.AddNullByte();
 
             return result;
         }
@@ -803,18 +790,18 @@ namespace CTGP7InstallerSharp
 
             try
             {
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                CancellationTokenSource cancellationTokenSource = new();
 
-                CTGP7Updater.fileProgressCallback?.Invoke(Path.GetFileName(fileOnlyName), 0);
+                CTGP7Updater.FileProgressCallback?.Invoke(Path.GetFileName(FileOnlyName), 0);
 
-                CTGP7Updater.MkFoldersForFile(filePath);
+                CTGP7Updater.CreateDirectoriesRecursively(FilePath);
 
 
 
                 char[] separators = { '\\', '/' };
-                string trimmedPath = remoteName.Replace("/", "\\").TrimStart(separators);
+                string trimmedPath = RemoteName.Replace("/", "\\").TrimStart(separators);
 
-#if DEBUG
+#if DEBUG_BENCH
                 CustomTimer timer = new(trimmedPath);
                 timer.Start("request+cs1+cs2+write");
                 timer.Start("request+cs1+cs2");
@@ -823,25 +810,25 @@ namespace CTGP7InstallerSharp
                 using (HttpResponseMessage response = await CTGP7Updater.client.GetAsync(URL, HttpCompletionOption.ResponseHeadersRead))
                 {
                     response.EnsureSuccessStatusCode();
-#if DEBUG
+#if DEBUG_BENCH
                     timer.Stop("webrequest");
 #endif
 
                     // Get the total file size
                     long totalBytes = response.Content.Headers.ContentLength ?? -1;
 
-#if DEBUG
+#if DEBUG_BENCH
                     timer.Start("createstream1");
 #endif
                     using (Stream contentStream = await response.Content.ReadAsStreamAsync())
                     {
-#if DEBUG
+#if DEBUG_BENCH
                         timer.Stop("createstream1");
                         timer.Start("createstream2");
 #endif
-                        using (FileStream fileStream = new FileStream(filePath + _DOWN_PART_EXT, FileMode.Create, FileAccess.Write))
+                        using (FileStream fileStream = new(FilePath + _DOWN_PART_EXT, FileMode.Create, FileAccess.Write))
                         {
-#if DEBUG
+#if DEBUG_BENCH
                             timer.Stop("createstream2");
                             timer.Stop("request+cs1+cs2");
 #endif
@@ -849,16 +836,16 @@ namespace CTGP7InstallerSharp
                             long downloadedBytes = 0;
                             int bytesRead;
 
-#if DEBUG
+#if DEBUG_BENCH
                             timer.Start("write");
 #endif
 
                             int writeCount = 0;
-                            while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                            while ((bytesRead = await contentStream.ReadAsync(buffer)) > 0)
                             {
-                                if (CTGP7Updater.isStoppedCallback.Invoke()) throw new OperationCanceledException(); 
+                                if (CTGP7Updater.IsStoppedCallback!.Invoke()) throw new OperationCanceledException(); 
 
-                                await fileStream.WriteAsync(buffer, 0, bytesRead);
+                                await fileStream.WriteAsync(buffer);
 
                                 downloadedBytes += bytesRead;
 
@@ -868,19 +855,19 @@ namespace CTGP7InstallerSharp
                                 writeCount++;
 
                                 // Invoke the progress callback with the percentage every "writeCount % Math.Round(8d / (buffer.Length / 8192)) == 0" writes (lol)
-                                if (writeCount % Math.Round(8d / (buffer.Length / 8192)) == 0) CTGP7Updater.fileProgressCallback?.Invoke(Path.GetFileName(fileOnlyName), progressPercentage);
+                                if (writeCount % Math.Round(8d / (buffer.Length / 8192)) == 0) CTGP7Updater.FileProgressCallback?.Invoke(Path.GetFileName(FileOnlyName), progressPercentage);
                             }
-#if DEBUG
+#if DEBUG_BENCH
                             timer.Stop("write");
                             timer.Stop("request+cs1+cs2+write");
 #endif
                         }
                     }
-                    CTGP7Updater.fileProgressCallback?.Invoke(Path.GetFileName(fileOnlyName), 100);
+                    CTGP7Updater.FileProgressCallback?.Invoke(Path.GetFileName(FileOnlyName), 100);
 
-                    CTGP7Updater.FileMove(filePath + _DOWN_PART_EXT, filePath);
+                    CTGP7Updater.MoveFile(FilePath + _DOWN_PART_EXT, FilePath);
                 }
-#if DEBUG
+#if DEBUG_BENCH
                 timer.Close();
 #endif
             }
@@ -888,8 +875,8 @@ namespace CTGP7InstallerSharp
             {
                 if (e is IOException || e is WebException || e is TimeoutException)
                 {
-                    CTGP7Updater.FileDelete(filePath + _DOWN_PART_EXT);
-                    throw new Exception($"Failed to download file \"{fileOnlyName}\": {e.Message}");
+                    CTGP7Updater.DeleteFile(FilePath + _DOWN_PART_EXT);
+                    throw new Exception($"Failed to download file \"{FileOnlyName}\": {e.Message}");
                 }
                 else
                 {
@@ -898,7 +885,7 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        public string Perform(string lastPerformValue)
+        public string? Perform(string lastPerformValue)
         {
             if (FileMethod == 'M' || FileMethod == 'C') // Modify
             {
@@ -907,22 +894,22 @@ namespace CTGP7InstallerSharp
             }
             else if (FileMethod == 'D') // Delete
             {
-                CTGP7Updater.FileDelete(filePath);
+                CTGP7Updater.DeleteFile(FilePath);
                 return null;
             }
             else if (FileMethod == 'F') // (Rename) From
             {
-                return filePath;
+                return FilePath;
             }
             else if (FileMethod == 'T') // (Rename) To
             {
                 if (lastPerformValue != null)
                 {
-                    CTGP7Updater.FileMove(lastPerformValue, filePath);
+                    CTGP7Updater.MoveFile(lastPerformValue, FilePath);
                 }
                 else
                 {
-                    throw new Exception($"Rename to statement for \"{fileOnlyName}\" is missing rename from statement");
+                    throw new Exception($"Rename to statement for \"{FileOnlyName}\" is missing rename from statement");
                 }
                 return null;
             }
@@ -951,7 +938,7 @@ namespace CTGP7InstallerSharp
 
             string newPath = $"{Path.Combine("TimeLogs", Name)}.txt";
 
-            CTGP7Updater.MkFoldersForFile(newPath);
+            CTGP7Updater.CreateDirectoriesRecursively(newPath);
             file = File.OpenWrite(newPath);
             writer = new(file);
         }
