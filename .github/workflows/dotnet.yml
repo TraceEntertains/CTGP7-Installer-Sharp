@@ -22,10 +22,8 @@ jobs:
         dotnet-version: 6.0.x
     - name: Restore dependencies
       run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore --results-directory "build-6.0.x"
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+    - name: Build and Test
+      run: dotnet test --no-build --verbosity normal --results-directory "build-6.0.x"
     - name: Upload dotnet test results
       uses: actions/upload-artifact@v3
       with:
