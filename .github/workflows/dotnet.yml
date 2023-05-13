@@ -23,7 +23,7 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build and Test
-      run: dotnet test --no-build --verbosity normal --results-directory "build-6.0.x"
+      run: dotnet test --verbosity normal --results-directory "build-6.0.x"
     - name: Upload dotnet test results
       uses: actions/upload-artifact@v3
       with:
