@@ -1,3 +1,5 @@
+[![.NET](https://github.com/TraceEntertains/CTGP7-Installer-Sharp/actions/workflows/dotnet.yml/badge.svg)](https://github.com/TraceEntertains/CTGP7-Installer-Sharp/actions/workflows/dotnet.yml)
+
 # CTGP7-Installer-Sharp
 This is a C# port of [CyberYoshi64's CTGP-7 Installer](https://github.com/CyberYoshi64/CTGP7-UpdateTool) made using the Avalonia UI framework and ChatGPT for the tedious parts of porting Python to C# (like porting code between a lot of other languages, most of it is the tedious part)
 
