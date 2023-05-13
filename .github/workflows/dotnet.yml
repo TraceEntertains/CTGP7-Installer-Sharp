@@ -23,6 +23,11 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --results-directory "build-6.0.x"
     - name: Test
       run: dotnet test --no-build --verbosity normal
+    - name: Upload dotnet test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: dotnet-results
+        path: build-6.0.x
