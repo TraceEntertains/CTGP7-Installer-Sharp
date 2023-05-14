@@ -52,7 +52,7 @@ jobs:
         run: dotnet test --no-build -c "${{ matrix.configuration }}"
       
       - name: Publish Installer
-        run: dotnet publish -c "${{ matrix.configuration }}" -r "${{ matrix.DOTNET_RUNTIME_IDENTIFIER }}" --output ./publish --no-restore --runtime ${{ matrix.os }}-${{ matrix.architecture-runtime }}
+        run: dotnet publish -c "${{ matrix.configuration }}" -r "${{ matrix.DOTNET_RUNTIME_IDENTIFIER }}" --output ./publish --no-restore
         env:
           DOTNET_CLI_TELEMETRY_OPTOUT: true
           
