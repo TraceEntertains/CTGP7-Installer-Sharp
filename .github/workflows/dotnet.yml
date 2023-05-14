@@ -30,6 +30,21 @@ jobs:
           OS_NAME: Windows x64
           DOTNET_RUNTIME_IDENTIFIER: win-x64
           RELEASE_ZIP_OS_NAME: win_x64
+        
+        - configuration: Debug
+          BUILD_CONFIGURATION_NAME: debug
+          
+        - configuration: Debug Dev
+          BUILD_CONFIGURATION_NAME: debug_dev
+          
+        - configuration: Debug Bench
+          BUILD_CONFIGURATION_NAME: debug_bench
+          
+        - configuration: Release
+          BUILD_CONFIGURATION_NAME: release
+          
+        - configuration: Release Dev
+          BUILD_CONFIGURATION_NAME: release_dev
 
     steps:
       - name: Checkout repository
@@ -59,5 +74,5 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.RELEASE_ZIP_OS_NAME }}-${{ matrix.configuration }}
+          name: ${{ matrix.RELEASE_ZIP_OS_NAME }}-${{ matrix.BUILD_CONFIGURATION_NAME }}
           path: publish
