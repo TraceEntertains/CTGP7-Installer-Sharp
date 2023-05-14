@@ -2,7 +2,6 @@
 
 	<PropertyGroup>
 		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-		<PublishTrimmed>true</PublishTrimmed>
 		<PublishSingleFile>true</PublishSingleFile>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net6.0</TargetFramework>
