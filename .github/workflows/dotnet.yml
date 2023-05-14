@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        configuration: [Debug, Release, Dev Debug, Dev Release, Dev Bench]
+        configuration: [Debug, Release, Dev Debug, Dev Release, Debug Bench]
         include:
         - os: ubuntu-latest
           OS_NAME: Linux x64
