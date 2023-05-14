@@ -4,7 +4,7 @@
 		<PublishSingleFile>true</PublishSingleFile>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net6.0</TargetFramework>
-		<RuntimeIdentifiers>win-x64;macOS-x64;linux-x64</RuntimeIdentifiers>
+		<RuntimeIdentifiers>win-x64;osx-x64;linux-x64</RuntimeIdentifiers>
 		<Nullable>enable</Nullable>
 		<Configurations>Debug;Release;Debug Bench;Dev Debug;Dev Release</Configurations>
 	</PropertyGroup>
