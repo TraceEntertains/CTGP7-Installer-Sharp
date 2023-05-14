@@ -13,13 +13,23 @@ jobs:
 
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-        architecture:
-          - x64
-          - arm64
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        configuration: [Debug, Release, Dev Debug, Dev Release, Dev Bench]
+        include:
+        - os: ubuntu-latest
+          OS_NAME: Linux x64
+          DOTNET_RUNTIME_IDENTIFIER: linux-x64
+          RELEASE_ZIP_OS_NAME: linux_x64
+
+        - os: macOS-latest
+          OS_NAME: macOS x64
+          DOTNET_RUNTIME_IDENTIFIER: osx-x64
+          RELEASE_ZIP_OS_NAME: osx_x64
+
+        - os: windows-latest
+          OS_NAME: Windows x64
+          DOTNET_RUNTIME_IDENTIFIER: win-x64
+          RELEASE_ZIP_OS_NAME: win_x64
 
     steps:
       - name: Checkout repository
@@ -33,14 +43,21 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build and test
-        run: dotnet build --configuration Release --no-restore
+      - name: Build
+        run: dotnet build -c "${{ matrix.configuration }}" --no-restore
         env:
-          ASPNETCORE_ENVIRONMENT: Development
           DOTNET_CLI_TELEMETRY_OPTOUT: true
-
-      - name: Publish
-        run: dotnet publish --configuration Release --output ./publish --no-restore --runtime ${{ matrix.os }}-${{ matrix.architecture-runtime }}
+      
+      - name: Test
+        run: dotnet test --no-build -c "${{ matrix.configuration }}"
+      
+      - name: Publish Installer
+        run: dotnet publish -c "${{ matrix.configuration }}" -r "${{ matrix.DOTNET_RUNTIME_IDENTIFIER }}" --output ./publish --no-restore --runtime ${{ matrix.os }}-${{ matrix.architecture-runtime }}
         env:
-          ASPNETCORE_ENVIRONMENT: Production
           DOTNET_CLI_TELEMETRY_OPTOUT: true
+          
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.RELEASE_ZIP_OS_NAME }}-${{ matrix.configuration }}
+          path: publish
