@@ -9,7 +9,7 @@ on:
 
 jobs:
   Build:
-    runs-on: ${{ OS_BUILD_PLATFORM }}
+    runs-on: ${{ matrix.OS_BUILD_PLATFORM }}
 
     strategy:
       matrix:
