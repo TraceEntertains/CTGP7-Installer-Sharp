@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        configuration: [Debug, Release, Dev Debug, Dev Release, Debug Bench]
+        configuration: [Debug, Dev Debug, Debug Bench, Release, Dev Release]
         include:
         - os: ubuntu-latest
           OS_NAME: Linux x64
@@ -34,8 +34,8 @@ jobs:
         - configuration: Debug
           BUILD_CONFIGURATION_NAME: debug
           
-        - configuration: Debug Dev
-          BUILD_CONFIGURATION_NAME: debug_dev
+        - configuration: Dev Debug
+          BUILD_CONFIGURATION_NAME: dev_debug
           
         - configuration: Debug Bench
           BUILD_CONFIGURATION_NAME: debug_bench
@@ -43,8 +43,8 @@ jobs:
         - configuration: Release
           BUILD_CONFIGURATION_NAME: release
           
-        - configuration: Release Dev
-          BUILD_CONFIGURATION_NAME: release_dev
+        - configuration: Dev Release
+          BUILD_CONFIGURATION_NAME: dev_release
 
     steps:
       - name: Checkout repository
