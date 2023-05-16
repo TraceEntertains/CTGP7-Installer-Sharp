@@ -54,9 +54,5 @@
 		<AvaloniaResource Include="Assets\**" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <None Remove="Assets\logo.png" />
-	</ItemGroup>
-
 
 </Project>
