@@ -66,14 +66,9 @@ jobs:
         run: dotnet restore
         env:
           DOTNET_CLI_TELEMETRY_OPTOUT: true
-
-      - name: Build
-        run: dotnet build -c "${{ matrix.configuration }}" -r ${{ matrix.DOTNET_RUNTIME_IDENTIFIER }} --no-restore
-        env:
-          DOTNET_CLI_TELEMETRY_OPTOUT: true
       
-      - name: Test
-        run: dotnet test --no-build -c "${{ matrix.configuration }}"
+      - name: Build and Test
+        run: dotnet test -c "${{ matrix.configuration }}" -r ${{ matrix.DOTNET_RUNTIME_IDENTIFIER }}
         env:
           DOTNET_CLI_TELEMETRY_OPTOUT: true
           
