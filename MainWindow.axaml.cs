@@ -494,8 +494,7 @@ namespace CTGP7InstallerSharp
                     SetStartButtonState(1);
                 }
                 else
-                {                if msg.exec_() == QMessageBox.No:
-                    return
+                {
                     hasPending = bmsk.PendingUpdateAvailable;
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "Valid CTGP-7 installation detected.");
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Foreground = new SolidColorBrush(Color.Parse("#480")));
