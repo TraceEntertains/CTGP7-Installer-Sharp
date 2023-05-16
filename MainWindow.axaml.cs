@@ -13,6 +13,8 @@ using Color = Avalonia.Media.Color;
 using Brushes = Avalonia.Media.Brushes;
 using Avalonia.Threading;
 using System.Linq;
+using MessageBox.Avalonia.DTO;
+using MessageBox.Avalonia.Models;
 
 namespace CTGP7InstallerSharp
 {
@@ -312,7 +314,7 @@ namespace CTGP7InstallerSharp
             miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "");
 
             worker = new CTGP7InstallerWorker(sdRootText.Text, isInstaller, (bool)isCitraPath!);
-            worker.signals.Progress += ReportProgress;if (isInstaller && (isCitraPath == null))
+            worker.signals.Progress += ReportProgress;
 
             worker.signals.Success += OnInstallSuccess;
             worker.signals.Error += OnInstallError;
@@ -330,6 +332,26 @@ namespace CTGP7InstallerSharp
         {
             if (startButtonState > 0 && startButtonState < 4)
             {
+                if (isCitraPath == null)
+                {
+                    var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBoxCustomParams()
+                    {
+                        ButtonDefinitions = new[]
+                        {
+                            new ButtonDefinition() { Name = "3DS" },
+                            new ButtonDefinition() { Name = "Citra" },
+                            new ButtonDefinition() { Name = "Cancel", IsCancel = true, IsDefault = true },
+                        },
+                        ContentTitle = "Select a platform to install for",
+                        Icon = Question,
+                        ContentMessage = "Unable to determine whether this installation is meant for a 3DS or Citra.\n\nPlease select which platform you want to install CTGP-7 for.",
+                    }).Show(this);
+
+                    if (result == "Cancel") return;
+                    isCitraPath = result == "Citra";
+                    
+                }
+
                 if (startButtonState == 2 && await
                     MessageBoxManager
                     .GetMessageBoxStandardWindow(
@@ -355,39 +377,7 @@ namespace CTGP7InstallerSharp
                 {
                     return;
                 }
-                
-                if (isInstaller && isCitraPath == null)
-                {
-                    var msg = new MessageBox()
-                    {
-                        Title = "Select a platform to install for",
-                        Icon = MessageBoxIcon.Question,
-                        Text = "Unable to determine whether this installation is meant for a 3DS or Citra.\n\nPlease select which platform you want to install CTGP-7 for."
-                    };
-                    var dlgIs3DS = new Button
-                    {
-                        Content = "3DS"
-                    };
-                    var dlgisCitra = new Button
-                    {
-                        Content = "Citra"
-                    };
-                    var dlgCancel = new Button
-                    {
-                        Content = "Cancel"
-                    };
-                    msg.Buttons = new[]
-                    {
-                        dlgIs3DS,
-                        dlgisCitra,
-                        dlgCancel
-                    };
-                    msg.DefaultButton = dlgCancel;
-                    var result = await msg.ShowDialog(Application.Current.MainWindow);
-
-                    if (result == dlgCancel) return;
-                    isCitraPath = (result == dlgisCitra);
-                }
+               
 
                 
                 if (!DoSaveBackup())

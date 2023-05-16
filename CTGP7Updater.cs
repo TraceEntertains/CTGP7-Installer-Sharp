@@ -681,7 +681,7 @@ namespace CTGP7InstallerSharp
             }
         }
 
-        public static bool IsCitraDirectory(string path)
+        public static bool? IsCitraDirectory(string path)
         {
             string citraPath;
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
@@ -716,7 +716,7 @@ namespace CTGP7InstallerSharp
             {
                 // Ignore exceptions and return null
             }
-            return false;
+            return null;
 
         }
     }
