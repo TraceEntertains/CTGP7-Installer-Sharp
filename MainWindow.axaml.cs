@@ -312,7 +312,8 @@ namespace CTGP7InstallerSharp
             miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "");
 
             worker = new CTGP7InstallerWorker(sdRootText.Text, isInstaller, (bool)isCitraPath!);
-            worker.signals.Progress += ReportProgress;
+            worker.signals.Progress += ReportProgress;if (isInstaller && (isCitraPath == null))
+
             worker.signals.Success += OnInstallSuccess;
             worker.signals.Error += OnInstallError;
 
@@ -325,7 +326,7 @@ namespace CTGP7InstallerSharp
             thread.Start();
         }
 
-        private async void MainButtonPress()
+        private async void OnMainButtonPress()
         {
             if (startButtonState > 0 && startButtonState < 4)
             {
@@ -354,8 +355,42 @@ namespace CTGP7InstallerSharp
                 {
                     return;
                 }
+                
+                if (isInstaller && isCitraPath == null)
+                {
+                    var msg = new MessageBox()
+                    {
+                        Title = "Select a platform to install for",
+                        Icon = MessageBoxIcon.Question,
+                        Text = "Unable to determine whether this installation is meant for a 3DS or Citra.\n\nPlease select which platform you want to install CTGP-7 for."
+                    };
+                    var dlgIs3DS = new Button
+                    {
+                        Content = "3DS"
+                    };
+                    var dlgisCitra = new Button
+                    {
+                        Content = "Citra"
+                    };
+                    var dlgCancel = new Button
+                    {
+                        Content = "Cancel"
+                    };
+                    msg.Buttons = new[]
+                    {
+                        dlgIs3DS,
+                        dlgisCitra,
+                        dlgCancel
+                    };
+                    msg.DefaultButton = dlgCancel;
+                    var result = await msg.ShowDialog(Application.Current.MainWindow);
 
-                if (isInstaller && !DoSaveBackup())
+                    if (result == dlgCancel) return;
+                    isCitraPath = (result == dlgisCitra);
+                }
+
+                
+                if (!DoSaveBackup())
                 {
                     return;
                 }
@@ -459,7 +494,8 @@ namespace CTGP7InstallerSharp
                     SetStartButtonState(1);
                 }
                 else
-                {
+                {                if msg.exec_() == QMessageBox.No:
+                    return
                     hasPending = bmsk.PendingUpdateAvailable;
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Content = "Valid CTGP-7 installation detected.");
                     miscInfoLabel.SafeInvoke(() => miscInfoLabel.Foreground = new SolidColorBrush(Color.Parse("#480")));
@@ -504,7 +540,7 @@ namespace CTGP7InstallerSharp
             sdBrowseButton.Click += (s, e) => BrowseForSD();
             sdRootText.GetObservable(TextBox.TextProperty).Subscribe(UpdateSDFolder);
             helpButton.Click += (s, e) => ShowHelpDialog();
-            startStopButton.Click += (s, e) => MainButtonPress();
+            startStopButton.Click += (s, e) => OnMainButtonPress();
             updateButton.Click += (s, e) => OnUpdateButtonPress();
         }
     }
